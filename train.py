@@ -1,13 +1,12 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from tensorboardX import SummaryWriter
+# from tensorboardX import SummaryWriter
 import argparse
-
+import os
 from models.lstm import LSTM
 
-from data import TextDataSet
-from utils import WordEmbedding
+from utils import TextDataSet, WordEmbedding
 
 
 # from models.ian import IAN
@@ -24,14 +23,16 @@ class Instructor:
             print('>>> {0}: {1}'.format(arg, getattr(opt, arg)))
 
         # absa_dataset = ABSADatesetReader(dataset=opt.dataset, embed_dim=opt.embed_dim, max_seq_len=opt.max_seq_len)
-        embed = WordEmbedding('data/sgns.financial.word')
-        train_set = TextDataSet('data/train_data.csv', embed, max_seq_len=opt.max_seq_len)
-        test_set = TextDataSet('data/train_data.csv', embed, max_seq_len=opt.max_seq_len, train=False, test=True)
+        embed = WordEmbedding(os.path.dirname(__file__) + '/data/word2vec/sgns.financial.word')
+        train_set = TextDataSet(os.path.dirname(__file__) + '/data/data.csv', embed,
+                                max_seq_len=opt.max_seq_len)
+        test_set = TextDataSet(os.path.dirname(__file__) + '/data/data.csv', embed, max_seq_len=opt.max_seq_len,
+                               train=False, test=True)
 
         self.train_data_loader = DataLoader(dataset=train_set, batch_size=opt.batch_size, shuffle=True)
         self.test_data_loader = DataLoader(dataset=test_set, batch_size=len(test_set),
                                            shuffle=False)
-        self.writer = SummaryWriter(log_dir=opt.logdir)
+        # self.writer = SummaryWriter(log_dir=opt.logdir)
 
         self.model = opt.model_class(embed.m, opt).to(opt.device)
         self.reset_parameters()
@@ -97,11 +98,11 @@ class Instructor:
                         print('loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}'.format(loss.item(), train_acc, test_acc))
 
                         # log
-                        self.writer.add_scalar('loss', loss, global_step)
-                        self.writer.add_scalar('acc', train_acc, global_step)
-                        self.writer.add_scalar('test_acc', test_acc, global_step)
+                        # self.writer.add_scalar('loss', loss, global_step)
+                        # self.writer.add_scalar('acc', train_acc, global_step)
+                        # self.writer.add_scalar('test_acc', test_acc, global_step)
 
-        self.writer.close()
+        # self.writer.close()
 
         print('max_test_acc: {0}'.format(max_test_acc))
         return max_test_acc
@@ -128,7 +129,6 @@ if __name__ == '__main__':
     parser.add_argument('--device', default=None, type=str)
     opt = parser.parse_args()
 
-    print('test')
     model_classes = {
         'lstm': LSTM,
         # 'td_lstm': TD_LSTM,

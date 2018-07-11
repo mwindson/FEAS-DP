@@ -17,16 +17,19 @@ class TextDataSet(data.Dataset):
         self.w2i = embedding.word2id
         self.i2w = embedding.id2word
         self.max_seq_len = max_seq_len
-        data, labels = self.tokenize(path, self.w2i)
+        data, entities, labels = self.tokenize(path, self.w2i)
         data_len = len(data)
         if test:
             self.data = data[int(0.7 * data_len):]
+            self.entities = entities[int(0.7 * data_len):]
             self.labels = labels[int(0.7 * data_len):]
         elif train:
             self.data = data[:int(0.7 * data_len)]
+            self.entities = entities[:int(0.7 * data_len)]
             self.labels = labels[:int(0.7 * data_len)]
         else:
             self.data = data
+            self.entities = entities
             self.labels = labels
 
     def pad_sequence(self, sequence, maxlen, dtype='int64', padding='pre', truncating='pre', value=0.):
@@ -46,20 +49,26 @@ class TextDataSet(data.Dataset):
         f = pd.read_csv(path, encoding='utf8', index_col=0)
         data = []
         labels = []
+        entities = []
         pad_and_trunc = 'post'
         for row in f.iterrows():
             sentence = row[1]['sentence'].replace(' ', '')
+            entity = row[1]['entity']
+            score = row[1]['score'] + 1
             words = jieba.lcut(sentence)
             sequence = [word_to_id[w] if w in word_to_id else len(word_to_id) + 1 for w in words]
             sequence = self.pad_sequence(sequence, self.max_seq_len, dtype='int64', padding=pad_and_trunc,
                                          truncating=pad_and_trunc)
+            entities.append(word_to_id[entity] if entity in word_to_id else len(word_to_id) + 1)
             data.append(sequence)
-            labels.append(row[1]['score'] + 1)
-        return data, labels
+            labels.append(score)
+        return data, entities, labels
 
     def __getitem__(self, index):
         data = torch.tensor(self.data[index], dtype=torch.long)
+        # entity = torch.tensor(self.entities[index], dtype=torch.long)
         labels = torch.tensor(self.labels[index], dtype=torch.long)
+        # return data, labels, entity
         return data, labels
 
     def __len__(self):
