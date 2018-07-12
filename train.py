@@ -6,6 +6,7 @@ import argparse
 import os
 from models.lstm import LSTM
 from models.at_lstm import AT_LSTM
+from models.atae_lstm import ATAE_LSTM
 from utils import TextDataSet, WordEmbedding
 
 
@@ -111,7 +112,7 @@ class Instructor:
 if __name__ == '__main__':
     # Hyper Parameters
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_name', default='at_lstm', type=str)
+    parser.add_argument('--model_name', default='atae_lstm', type=str)
     parser.add_argument('--dataset', default='twitter', type=str, help='twitter, restaurant, laptop')
     parser.add_argument('--optimizer', default='adam', type=str)
     parser.add_argument('--initializer', default='xavier_uniform_', type=str)
@@ -132,6 +133,7 @@ if __name__ == '__main__':
     model_classes = {
         'lstm': LSTM,
         'at_lstm': AT_LSTM,
+        'atae_lstm': ATAE_LSTM,
         # 'td_lstm': TD_LSTM,
         # 'ian': IAN,
         # 'memnet': MemNet,
@@ -141,6 +143,7 @@ if __name__ == '__main__':
     input_colses = {
         'lstm': ['text_raw_indices'],
         'at_lstm': ['text_raw_indices', 'entity_indices'],
+        'atae_lstm': ['text_raw_indices', 'entity_indices'],
         # 'td_lstm': ['text_left_with_aspect_indices', 'text_right_with_aspect_indices'],
         # 'ian': ['text_raw_indices', 'aspect_indices'],
         # 'memnet': ['text_raw_without_aspect_indices', 'aspect_indices', 'text_left_with_aspect_indices'],
