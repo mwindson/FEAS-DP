@@ -65,11 +65,12 @@ class TextDataSet(data.Dataset):
         return data, entities, labels
 
     def __getitem__(self, index):
-        data = torch.tensor(self.data[index], dtype=torch.long)
-        # entity = torch.tensor(self.entities[index], dtype=torch.long)
-        labels = torch.tensor(self.labels[index], dtype=torch.long)
-        # return data, labels, entity
-        return data, labels
+        item = {
+            'text_raw_indices': torch.tensor(self.data[index], dtype=torch.long),
+            'entity_indices': torch.tensor(self.entities[index], dtype=torch.long),
+            'label': torch.tensor(self.labels[index], dtype=torch.long)
+        }
+        return item
 
     def __len__(self):
         return len(self.data)

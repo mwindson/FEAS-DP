@@ -16,7 +16,7 @@ class LSTM(nn.Module):
         self.dense = nn.Linear(opt.hidden_dim, opt.polarities_dim)
 
     def forward(self, inputs):
-        text_raw_indices = inputs
+        text_raw_indices = inputs[0]
         x = self.embed(text_raw_indices)
         x_len = torch.sum(text_raw_indices != 0, dim=-1)
         _, (h_n, _) = self.lstm(x, x_len)

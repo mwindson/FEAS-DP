@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 import argparse
 import os
 from models.lstm import LSTM
-
+from models.at_lstm import AT_LSTM
 from utils import TextDataSet, WordEmbedding
 
 
@@ -61,15 +61,15 @@ class Instructor:
             print('>' * 100)
             print('epoch: ', epoch)
             n_correct, n_total = 0, 0
-            for i_batch, (train_data, train_labels) in enumerate(self.train_data_loader):
+            for i_batch, sample_batched in enumerate(self.train_data_loader):
                 global_step += 1
 
                 # switch models to training mode, clear gradient accumulators
                 self.model.train()
                 optimizer.zero_grad()
 
-                inputs = train_data.to(opt.device)
-                targets = train_labels.to(opt.device)
+                inputs = [sample_batched[col].to(opt.device) for col in self.opt.inputs_cols]
+                targets = sample_batched['label'].to(opt.device)
                 outputs = self.model(inputs)
                 loss = criterion(outputs, targets)
                 loss.backward()
@@ -84,9 +84,9 @@ class Instructor:
                     self.model.eval()
                     n_test_correct, n_test_total = 0, 0
                     with torch.no_grad():
-                        for t_batch, (test_data, test_labels) in enumerate(self.test_data_loader):
-                            t_inputs = test_data.to(opt.device)
-                            t_targets = test_labels.to(opt.device)
+                        for t_batch, t_sample_batched in enumerate(self.test_data_loader):
+                            t_inputs = [t_sample_batched[col].to(opt.device) for col in self.opt.inputs_cols]
+                            t_targets = t_sample_batched['label'].to(opt.device)
                             t_outputs = self.model(t_inputs)
 
                             n_test_correct += (torch.argmax(t_outputs, -1) == t_targets).sum().item()
@@ -111,18 +111,18 @@ class Instructor:
 if __name__ == '__main__':
     # Hyper Parameters
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_name', default='lstm', type=str)
+    parser.add_argument('--model_name', default='at_lstm', type=str)
     parser.add_argument('--dataset', default='twitter', type=str, help='twitter, restaurant, laptop')
     parser.add_argument('--optimizer', default='adam', type=str)
     parser.add_argument('--initializer', default='xavier_uniform_', type=str)
     parser.add_argument('--learning_rate', default=0.001, type=float)
     parser.add_argument('--dropout', default=0, type=float)
-    parser.add_argument('--num_epoch', default=20, type=int)
+    parser.add_argument('--num_epoch', default=50, type=int)
     parser.add_argument('--batch_size', default=128, type=int)
     parser.add_argument('--log_step', default=5, type=int)
     parser.add_argument('--logdir', default='log', type=str)
     parser.add_argument('--embed_dim', default=300, type=int)
-    parser.add_argument('--hidden_dim', default=200, type=int)
+    parser.add_argument('--hidden_dim', default=300, type=int)
     parser.add_argument('--max_seq_len', default=80, type=int)
     parser.add_argument('--polarities_dim', default=3, type=int)
     parser.add_argument('--hops', default=3, type=int)
@@ -131,6 +131,7 @@ if __name__ == '__main__':
 
     model_classes = {
         'lstm': LSTM,
+        'at_lstm': AT_LSTM,
         # 'td_lstm': TD_LSTM,
         # 'ian': IAN,
         # 'memnet': MemNet,
@@ -139,6 +140,7 @@ if __name__ == '__main__':
     }
     input_colses = {
         'lstm': ['text_raw_indices'],
+        'at_lstm': ['text_raw_indices', 'entity_indices'],
         # 'td_lstm': ['text_left_with_aspect_indices', 'text_right_with_aspect_indices'],
         # 'ian': ['text_raw_indices', 'aspect_indices'],
         # 'memnet': ['text_raw_without_aspect_indices', 'aspect_indices', 'text_left_with_aspect_indices'],
