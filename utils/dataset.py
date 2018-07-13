@@ -51,17 +51,19 @@ class TextDataSet(data.Dataset):
         labels = []
         entities = []
         pad_and_trunc = 'post'
+        cell_to_list = lambda s: s.replace('[', '').replace(']', '').split(',')
         for row in f.iterrows():
             sentence = row[1]['sentence'].replace(' ', '')
-            entity = row[1]['entity']
-            score = row[1]['score'] + 1
+            entity_list = cell_to_list(row[1]['entity'])
+            score_list = [int(float(sc)) + 1 for sc in cell_to_list(row[1]['score'])]
             words = jieba.lcut(sentence)
             sequence = [word_to_id[w] if w in word_to_id else len(word_to_id) + 1 for w in words]
             sequence = self.pad_sequence(sequence, self.max_seq_len, dtype='int64', padding=pad_and_trunc,
                                          truncating=pad_and_trunc)
-            entities.append(word_to_id[entity] if entity in word_to_id else len(word_to_id) + 1)
-            data.append(sequence)
-            labels.append(score)
+            for index, entity in enumerate(entity_list):
+                entities.append(word_to_id[entity] if entity in word_to_id else len(word_to_id) + 1)
+                data.append(sequence)
+                labels.append(score)
         return data, entities, labels
 
     def __getitem__(self, index):
