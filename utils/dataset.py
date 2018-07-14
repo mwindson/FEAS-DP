@@ -63,7 +63,7 @@ class TextDataSet(data.Dataset):
             for index, entity in enumerate(entity_list):
                 entities.append(word_to_id[entity] if entity in word_to_id else len(word_to_id) + 1)
                 data.append(sequence)
-                labels.append(score)
+                labels.append(score_list[index])
         return data, entities, labels
 
     def __getitem__(self, index):

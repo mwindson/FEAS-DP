@@ -25,9 +25,9 @@ class Instructor:
 
         # absa_dataset = ABSADatesetReader(dataset=opt.dataset, embed_dim=opt.embed_dim, max_seq_len=opt.max_seq_len)
         embed = WordEmbedding(os.path.dirname(__file__) + '/data/word2vec/sgns.financial.word')
-        train_set = TextDataSet(os.path.dirname(__file__) + '/data/single.csv', embed,
+        train_set = TextDataSet(os.path.dirname(__file__) + '/data/multi.csv', embed,
                                 max_seq_len=opt.max_seq_len)
-        test_set = TextDataSet(os.path.dirname(__file__) + '/data/single.csv', embed, max_seq_len=opt.max_seq_len,
+        test_set = TextDataSet(os.path.dirname(__file__) + '/data/multi.csv', embed, max_seq_len=opt.max_seq_len,
                                train=False, test=True)
 
         self.train_data_loader = DataLoader(dataset=train_set, batch_size=opt.batch_size, shuffle=True)
@@ -112,7 +112,7 @@ class Instructor:
 if __name__ == '__main__':
     # Hyper Parameters
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_name', default='at_lstm', type=str)
+    parser.add_argument('--model_name', default='atae_lstm', type=str)
     parser.add_argument('--dataset', default='twitter', type=str, help='twitter, restaurant, laptop')
     parser.add_argument('--optimizer', default='adam', type=str)
     parser.add_argument('--initializer', default='xavier_uniform_', type=str)
