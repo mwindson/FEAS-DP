@@ -4,6 +4,7 @@ import pandas as pd
 from utils import WordEmbedding
 import torch
 import numpy as np
+import ast
 
 
 class TextDataSet(data.Dataset):
@@ -52,10 +53,14 @@ class TextDataSet(data.Dataset):
         entities = []
         pad_and_trunc = 'post'
         cell_to_list = lambda s: s.replace('[', '').replace(']', '').split(',')
+        f.entity = f.entity.apply(lambda s: list(ast.literal_eval(s)))
+        f.score = f.score.apply(lambda s: list(ast.literal_eval(s)))
         for row in f.iterrows():
             sentence = row[1]['sentence'].replace(' ', '')
+            # todo 修改csv读取代码，存在问题
             entity_list = cell_to_list(row[1]['entity'])
             score_list = [int(float(sc)) + 1 for sc in cell_to_list(row[1]['score'])]
+            # todo 待修改
             words = jieba.lcut(sentence)
             sequence = [word_to_id[w] if w in word_to_id else len(word_to_id) + 1 for w in words]
             sequence = self.pad_sequence(sequence, self.max_seq_len, dtype='int64', padding=pad_and_trunc,
