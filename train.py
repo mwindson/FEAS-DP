@@ -25,10 +25,9 @@ class Instructor:
 
         # absa_dataset = ABSADatesetReader(dataset=opt.dataset, embed_dim=opt.embed_dim, max_seq_len=opt.max_seq_len)
         embed = WordEmbedding(os.path.dirname(__file__) + '/data/word2vec/sgns.financial.word')
-        train_set = TextDataSet(os.path.dirname(__file__) + '/data/multi.csv', embed,
+        train_set = TextDataSet(os.path.dirname(__file__) + '/data/multi_train.csv', embed,
                                 max_seq_len=opt.max_seq_len)
-        test_set = TextDataSet(os.path.dirname(__file__) + '/data/multi.csv', embed, max_seq_len=opt.max_seq_len,
-                               train=False, test=True)
+        test_set = TextDataSet(os.path.dirname(__file__) + '/data/multi_test.csv', embed, max_seq_len=opt.max_seq_len)
 
         self.train_data_loader = DataLoader(dataset=train_set, batch_size=opt.batch_size, shuffle=True)
         self.test_data_loader = DataLoader(dataset=test_set, batch_size=opt.batch_size,
@@ -118,7 +117,7 @@ if __name__ == '__main__':
     parser.add_argument('--initializer', default='xavier_uniform_', type=str)
     parser.add_argument('--learning_rate', default=0.001, type=float)
     parser.add_argument('--dropout', default=0, type=float)
-    parser.add_argument('--num_epoch', default=50, type=int)
+    parser.add_argument('--num_epoch', default=10, type=int)
     parser.add_argument('--batch_size', default=128, type=int)
     parser.add_argument('--log_step', default=5, type=int)
     parser.add_argument('--logdir', default='log', type=str)

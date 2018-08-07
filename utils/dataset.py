@@ -8,7 +8,7 @@ import ast
 
 
 class TextDataSet(data.Dataset):
-    def __init__(self, path, embedding, max_seq_len=80, train=True, test=False):
+    def __init__(self, path, embedding, max_seq_len=80, train=False, test=False):
         '''
         读取文件，并将句子转化成词索引
         :param train:是否训练集
@@ -52,15 +52,13 @@ class TextDataSet(data.Dataset):
         labels = []
         entities = []
         pad_and_trunc = 'post'
-        cell_to_list = lambda s: s.replace('[', '').replace(']', '').split(',')
+        # cell_to_list = lambda s: s.replace('[', '').replace(']', '').split(',')
         f.entity = f.entity.apply(lambda s: list(ast.literal_eval(s)))
         f.score = f.score.apply(lambda s: list(ast.literal_eval(s)))
         for row in f.iterrows():
             sentence = row[1]['sentence'].replace(' ', '')
-            # todo 修改csv读取代码，存在问题
-            entity_list = cell_to_list(row[1]['entity'])
-            score_list = [int(float(sc)) + 1 for sc in cell_to_list(row[1]['score'])]
-            # todo 待修改
+            entity_list = row[1]['entity']
+            score_list = [int(float(sc)) + 1 for sc in row[1]['score']]
             words = jieba.lcut(sentence)
             sequence = [word_to_id[w] if w in word_to_id else len(word_to_id) + 1 for w in words]
             sequence = self.pad_sequence(sequence, self.max_seq_len, dtype='int64', padding=pad_and_trunc,
