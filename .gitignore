@@ -1,5 +1,6 @@
 .idea
 .vscode
+.data/word2vec
 venv/
 .DS_Store
 __pycache__/
