@@ -8,6 +8,8 @@ from models.lstm import LSTM
 from models.at_lstm import AT_LSTM
 from models.atae_lstm import ATAE_LSTM
 from models.cnn import CNN
+from models.ram import RAM
+from models.ian import IAN
 from utils import TextDataSet, WordEmbedding, TextDataSet2
 
 
@@ -25,19 +27,12 @@ class Instructor:
             print('>>> {0}: {1}'.format(arg, getattr(opt, arg)))
 
         # absa_dataset = ABSADatesetReader(dataset=opt.dataset, embed_dim=opt.embed_dim, max_seq_len=opt.max_seq_len)
-        if opt.vector_way =='words2vec':
-            embed = WordEmbedding(os.path.dirname(__file__) + '/data/word2vec/sgns.financial.word')
-            train_set = TextDataSet(os.path.dirname(__file__) + '/data/single_train.csv', embed,
-                                    max_seq_len=opt.max_seq_len)
-            test_set = TextDataSet(os.path.dirname(__file__) + '/data/single_test.csv', embed, max_seq_len=opt.max_seq_len,
-                                   train=False, test=True)
-        else:
-            embed = WordEmbedding(os.path.dirname(__file__) + '/data/word2vec/sgns.financial.char')
-            train_set = TextDataSet2(os.path.dirname(__file__) + '/data/single_train.csv', embed,
-                                    max_seq_len=opt.max_seq_len)
-            test_set = TextDataSet2(os.path.dirname(__file__) + '/data/single_test.csv', embed, max_seq_len=opt.max_seq_len,
-                                   train=False, test=True)
-
+        embed = WordEmbedding(os.path.dirname(
+            __file__) + '/data/word2vec/sgns.financial.word' if opt.vector_level == 'word' else '/data/word2vec/sgns.financial.char')
+        train_set = TextDataSet(os.path.dirname(__file__) + '/data/single_train.csv', embed,
+                                max_seq_len=opt.max_seq_len, vector_level=opt.vector_level)
+        test_set = TextDataSet(os.path.dirname(__file__) + '/data/single_test.csv', embed,
+                               max_seq_len=opt.max_seq_len, vector_level=opt.vector_level)
         self.train_data_loader = DataLoader(dataset=train_set, batch_size=opt.batch_size, shuffle=True)
         self.test_data_loader = DataLoader(dataset=test_set, batch_size=opt.batch_size,
                                            shuffle=False)
@@ -120,13 +115,13 @@ class Instructor:
 if __name__ == '__main__':
     # Hyper Parameters
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_name', default='cnn', type=str)
+    parser.add_argument('--model_name', default='atae_lstm', type=str)
     parser.add_argument('--dataset', default='twitter', type=str, help='twitter, restaurant, laptop')
     parser.add_argument('--optimizer', default='adam', type=str)
     parser.add_argument('--initializer', default='xavier_uniform_', type=str)
     parser.add_argument('--learning_rate', default=0.001, type=float)
     parser.add_argument('--dropout', default=0, type=float)
-    parser.add_argument('--num_epoch', default=10, type=int)
+    parser.add_argument('--num_epoch', default=30, type=int)
     parser.add_argument('--batch_size', default=128, type=int)
     parser.add_argument('--log_step', default=5, type=int)
     parser.add_argument('--logdir', default='log', type=str)
@@ -136,7 +131,7 @@ if __name__ == '__main__':
     parser.add_argument('--polarities_dim', default=3, type=int)
     parser.add_argument('--hops', default=3, type=int)
     parser.add_argument('--device', default=None, type=str)
-    parser.add_argument('--vector_way', default='char', type=str)
+    parser.add_argument('--vector_level', default='word', type=str)
     opt = parser.parse_args()
 
     model_classes = {
@@ -145,9 +140,9 @@ if __name__ == '__main__':
         'atae_lstm': ATAE_LSTM,
         'cnn': CNN,
         # 'td_lstm': TD_LSTM,
-        # 'ian': IAN,
+        'ian': IAN,
         # 'memnet': MemNet,
-        # 'ram': RAM,
+        'ram': RAM,
         # 'cabasc': Cabasc
     }
     input_colses = {
@@ -156,9 +151,9 @@ if __name__ == '__main__':
         'atae_lstm': ['text_raw_indices', 'entity_indices'],
         'cnn': ['text_raw_indices'],
         # 'td_lstm': ['text_left_with_aspect_indices', 'text_right_with_aspect_indices'],
-        # 'ian': ['text_raw_indices', 'aspect_indices'],
+        'ian': ['text_raw_indices', 'entity_indices'],
         # 'memnet': ['text_raw_without_aspect_indices', 'aspect_indices', 'text_left_with_aspect_indices'],
-        # 'ram': ['text_raw_indices', 'aspect_indices'],
+        'ram': ['text_raw_indices', 'entity_indices'],
         # 'cabasc': ['text_raw_indices', 'aspect_indices', 'text_left_with_aspect_indices',
         #            'text_right_with_aspect_indices'],
     }

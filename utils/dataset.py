@@ -8,7 +8,7 @@ import ast
 
 
 class TextDataSet(data.Dataset):
-    def __init__(self, path, embedding, max_seq_len=80, train=False, test=False):
+    def __init__(self, path, embedding, max_seq_len=80, vector_level='word', train=False, test=False):
         '''
         读取文件，并将句子转化成词索引
         :param train:是否训练集
@@ -18,7 +18,7 @@ class TextDataSet(data.Dataset):
         self.w2i = embedding.word2id
         self.i2w = embedding.id2word
         self.max_seq_len = max_seq_len
-        data, entities, labels = self.tokenize(path, self.w2i)
+        data, entities, labels = self.tokenize(path, self.w2i, vector_level)
         data_len = len(data)
         if test:
             self.data = data[int(0.7 * data_len):]
@@ -46,20 +46,19 @@ class TextDataSet(data.Dataset):
             x[-len(trunc):] = trunc
         return x
 
-    def tokenize(self, path, word_to_id):
+    def tokenize(self, path, word_to_id, vector_level='word'):
         f = pd.read_csv(path, encoding='utf8', index_col=0)
         data = []
         labels = []
         entities = []
         pad_and_trunc = 'post'
-        # cell_to_list = lambda s: s.replace('[', '').replace(']', '').split(',')
         f.entity = f.entity.apply(lambda s: list(ast.literal_eval(s)))
         f.score = f.score.apply(lambda s: list(ast.literal_eval(s)))
         for row in f.iterrows():
-            sentence = row[1]['sentence'].replace(' ', '')
+            sentence = row[1]['sentence'].lstrip().rstrip()
             entity_list = row[1]['entity']
             score_list = [int(float(sc)) + 1 for sc in row[1]['score']]
-            words = jieba.lcut(sentence)
+            words = jieba.lcut(sentence) if vector_level == 'word' else sentence.split("")
             sequence = [word_to_id[w] if w in word_to_id else len(word_to_id) + 1 for w in words]
             sequence = self.pad_sequence(sequence, self.max_seq_len, dtype='int64', padding=pad_and_trunc,
                                          truncating=pad_and_trunc)
