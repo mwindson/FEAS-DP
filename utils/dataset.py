@@ -58,11 +58,7 @@ class TextDataSet(data.Dataset):
             sentence = row[1]['sentence'].lstrip().rstrip()
             entity_list = row[1]['entity']
             score_list = [int(float(sc)) + 1 for sc in row[1]['score']]
-            try:
-                words = jieba.lcut(sentence) if vector_level == 'word' else list(sentence)
-            except:
-                print(sentence)
-                exit()
+            words = jieba.lcut(sentence) if vector_level == 'word' else list(sentence)
             sequence = [word_to_id[w] if w in word_to_id else len(word_to_id) + 1 for w in words]
             sequence = self.pad_sequence(sequence, self.max_seq_len, dtype='int64', padding=pad_and_trunc,
                                          truncating=pad_and_trunc)
