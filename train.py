@@ -35,7 +35,7 @@ class Instructor:
                                max_seq_len=opt.max_seq_len, vector_level=opt.vector_level, test=True)
         self.train_data_loader = DataLoader(dataset=train_set, batch_size=opt.batch_size, shuffle=True)
         self.test_data_loader = DataLoader(dataset=test_set, batch_size=opt.batch_size,
-                                           shuffle=False)
+                                           shuffle=True)
         # self.writer = SummaryWriter(log_dir=opt.logdir)
 
         self.model = opt.model_class(embed.m, opt).to(opt.device)
@@ -115,7 +115,7 @@ class Instructor:
 if __name__ == '__main__':
     # Hyper Parameters
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_name', default='ram', type=str)
+    parser.add_argument('--model_name', default='ian', type=str)
     # parser.add_argument('--dataset', default='twitter', type=str, help='twitter, restaurant, laptop')
     parser.add_argument('--vector_level', default='word', type=str)
     parser.add_argument('--optimizer', default='adam', type=str)
