@@ -4,20 +4,11 @@ from torch.utils.data import DataLoader
 # from tensorboardX import SummaryWriter
 import argparse
 import os
-from models.lstm import LSTM
-from models.at_lstm import AT_LSTM
-from models.atae_lstm import ATAE_LSTM
-from models.cnn import CNN
-from models.ram import RAM
-from models.ian import IAN
+
 from utils import TextDataSet, WordEmbedding
 
+from models import LSTM, AT_LSTM, ATAE_LSTM, RAM, IAN, CNN, Cabasc, MemNet
 
-# from models.ian import IAN
-# from models.memnet import MemNet
-# from models.ram import RAM
-# from models.td_lstm import TD_LSTM
-# from models.cabasc import Cabasc
 
 class Instructor:
     def __init__(self, opt):
@@ -53,6 +44,12 @@ class Instructor:
                 n_nontrainable_params += n_params
         print('n_trainable_params: {0}, n_nontrainable_params: {1}'.format(n_trainable_params, n_nontrainable_params))
 
+    def adjust_learning_rate(self, optimizer, epoch):
+        """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
+        lr = self.opt.learning_rate * (0.1 ** (epoch // 30))
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
+
     def run(self):
         # Loss and Optimizer
         criterion = nn.CrossEntropyLoss()
@@ -64,6 +61,7 @@ class Instructor:
         for epoch in range(self.opt.num_epoch):
             print('>' * 100)
             print('epoch: ', epoch)
+            self.adjust_learning_rate(optimizer, epoch)
             n_correct, n_total = 0, 0
             for i_batch, sample_batched in enumerate(self.train_data_loader):
                 global_step += 1
@@ -115,8 +113,7 @@ class Instructor:
 if __name__ == '__main__':
     # Hyper Parameters
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_name', default='ian', type=str)
-    # parser.add_argument('--dataset', default='twitter', type=str, help='twitter, restaurant, laptop')
+    parser.add_argument('--model_name', default='ram', type=str)
     parser.add_argument('--vector_level', default='word', type=str)
     parser.add_argument('--optimizer', default='adam', type=str)
     parser.add_argument('--initializer', default='xavier_uniform_', type=str)
@@ -139,23 +136,21 @@ if __name__ == '__main__':
         'at_lstm': AT_LSTM,
         'atae_lstm': ATAE_LSTM,
         'cnn': CNN,
-        # 'td_lstm': TD_LSTM,
         'ian': IAN,
-        # 'memnet': MemNet,
+        'memnet': MemNet,
         'ram': RAM,
-        # 'cabasc': Cabasc
+        'cabasc': Cabasc
     }
     input_colses = {
         'lstm': ['text_raw_indices'],
         'at_lstm': ['text_raw_indices', 'entity_indices'],
         'atae_lstm': ['text_raw_indices', 'entity_indices'],
         'cnn': ['text_raw_indices'],
-        # 'td_lstm': ['text_left_with_aspect_indices', 'text_right_with_aspect_indices'],
         'ian': ['text_raw_indices', 'entity_indices'],
-        # 'memnet': ['text_raw_without_aspect_indices', 'aspect_indices', 'text_left_with_aspect_indices'],
+        'memnet': ['text_raw_without_entity_indices', 'entity_indices', 'text_left_with_entity_indices'],
         'ram': ['text_raw_indices', 'entity_indices'],
-        # 'cabasc': ['text_raw_indices', 'aspect_indices', 'text_left_with_aspect_indices',
-        #            'text_right_with_aspect_indices'],
+        'cabasc': ['text_raw_indices', 'entity_indices', 'text_left_with_entity_indices',
+                   'text_right_with_entity_indices'],
     }
     initializers = {
         'xavier_uniform_': torch.nn.init.xavier_uniform_,
