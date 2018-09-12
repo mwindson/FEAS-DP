@@ -1,13 +1,13 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-# from tensorboardX import SummaryWriter
+from tensorboardX import SummaryWriter
 import argparse
 import os
-
+import pandas as pd
 from utils import TextDataSet, WordEmbedding
 
-from models import LSTM, AT_LSTM, ATAE_LSTM, RAM, IAN, CNN, Cabasc, MemNet
+from models import LSTM, AT_LSTM, ATAE_LSTM, RAM, IAN, CNN, Cabasc, MemNet, LRG
 
 
 class Instructor:
@@ -16,10 +16,13 @@ class Instructor:
         print('> training arguments:')
         for arg in vars(opt):
             print('>>> {0}: {1}'.format(arg, getattr(opt, arg)))
-
-        # absa_dataset = ABSADatesetReader(dataset=opt.dataset, embed_dim=opt.embed_dim, max_seq_len=opt.max_seq_len)
-        embed = WordEmbedding(os.path.dirname(__file__) + (
-            '/data/word2vec/sgns.financial.word' if opt.vector_level == 'word' else '/data/word2vec/sgns.financial.char'))
+        w2v_path = {
+            'word': '/data/word2vec/sgns.financial.word',
+            'word_bigram': '/data/word2vec/sgns.financial.bigram',
+            'char': '/data/word2vec/sgns.financial.char',
+            'char_bigram': '/data/word2vec/sgns.financial.bigram-char'
+        }
+        embed = WordEmbedding(os.path.dirname(__file__) + w2v_path[opt.vector_level], initializer='avg')
         train_set = TextDataSet(os.path.dirname(__file__) + '/data/single_test.csv', embed,
                                 max_seq_len=opt.max_seq_len, vector_level=opt.vector_level, train=True)
         test_set = TextDataSet(os.path.dirname(__file__) + '/data/single_test.csv', embed,
@@ -27,7 +30,7 @@ class Instructor:
         self.train_data_loader = DataLoader(dataset=train_set, batch_size=opt.batch_size, shuffle=True)
         self.test_data_loader = DataLoader(dataset=test_set, batch_size=opt.batch_size,
                                            shuffle=True)
-        # self.writer = SummaryWriter(log_dir=opt.logdir)
+        self.writer = SummaryWriter(log_dir=opt.logdir)
 
         self.model = opt.model_class(embed.m, opt).to(opt.device)
         self.reset_parameters()
@@ -46,7 +49,8 @@ class Instructor:
 
     def adjust_learning_rate(self, optimizer, epoch):
         """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-        lr = self.opt.learning_rate * (0.1 ** (epoch // 30))
+        lr = self.opt.learning_rate * (0.25 ** (int(epoch / 10)))
+        print("lr>>>>>> ", lr)
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
 
@@ -54,57 +58,82 @@ class Instructor:
         # Loss and Optimizer
         criterion = nn.CrossEntropyLoss()
         params = filter(lambda p: p.requires_grad, self.model.parameters())
-        optimizer = self.opt.optimizer(params, lr=self.opt.learning_rate)
+        optimizer = self.opt.optimizer(params, lr=self.opt.learning_rate, weight_decay=1e-4)
         print('-----------start train---------- ')
         max_test_acc = 0
         global_step = 0
-        for epoch in range(self.opt.num_epoch):
-            print('>' * 100)
-            print('epoch: ', epoch)
-            self.adjust_learning_rate(optimizer, epoch)
-            n_correct, n_total = 0, 0
-            for i_batch, sample_batched in enumerate(self.train_data_loader):
-                global_step += 1
+        try:
+            for epoch in range(self.opt.num_epoch):
+                print('>' * 100)
+                print('epoch: ', epoch)
+                self.adjust_learning_rate(optimizer, epoch)
+                n_correct, n_total = 0, 0
+                for i_batch, sample_batched in enumerate(self.train_data_loader):
+                    global_step += 1
 
-                # switch models to training mode, clear gradient accumulators
-                self.model.train()
-                optimizer.zero_grad()
+                    # switch models to training mode, clear gradient accumulators
+                    self.model.train()
+                    optimizer.zero_grad()
 
-                inputs = [sample_batched[col].to(opt.device) for col in self.opt.inputs_cols]
-                targets = sample_batched['label'].to(opt.device)
-                outputs = self.model(inputs)
-                loss = criterion(outputs, targets)
-                loss.backward()
-                optimizer.step()
+                    inputs = [sample_batched[col].to(opt.device) for col in self.opt.inputs_cols]
+                    targets = sample_batched['label'].to(opt.device)
+                    outputs = self.model(inputs)
+                    loss = criterion(outputs, targets)
+                    loss.backward()
+                    optimizer.step()
 
-                if global_step % self.opt.log_step == 0:
-                    n_correct += (torch.argmax(outputs, -1) == targets).sum().item()
-                    n_total += len(outputs)
-                    train_acc = n_correct / n_total
+                    if global_step % self.opt.log_step == 0:
+                        n_correct += (torch.argmax(outputs, -1) == targets).sum().item()
+                        n_total += len(outputs)
+                        train_acc = n_correct / n_total
 
-                    # switch models to evaluation mode
-                    self.model.eval()
-                    n_test_correct, n_test_total = 0, 0
-                    with torch.no_grad():
-                        for t_batch, t_sample_batched in enumerate(self.test_data_loader):
-                            t_inputs = [t_sample_batched[col].to(opt.device) for col in self.opt.inputs_cols]
-                            t_targets = t_sample_batched['label'].to(opt.device)
-                            t_outputs = self.model(t_inputs)
+                        # switch models to evaluation mode
+                        self.model.eval()
+                        n_test_correct, n_test_total = 0, 0
+                        with torch.no_grad():
+                            errors = pd.DataFrame([], columns=['text', 'entity', 'predict', 'label'])
+                            test_loss = 0.
+                            n_test_loss = 0.
+                            for t_batch, t_sample_batched in enumerate(self.test_data_loader):
+                                t_inputs = [t_sample_batched[col].to(opt.device) for col in self.opt.inputs_cols]
+                                t_targets = t_sample_batched['label'].to(opt.device)
+                                t_outputs = self.model(t_inputs)
+                                if max_test_acc > 0:
+                                    t_res = torch.argmax(t_outputs, -1)
+                                    t_diff = t_res == t_targets
+                                    for i, d in enumerate(t_diff.cpu().numpy()):
+                                        if d == 0:
+                                            err = {'text': t_sample_batched['text_raw'][i],
+                                                   'entity': t_sample_batched['entity'][i],
+                                                   'predict': t_res.cpu().numpy()[i],
+                                                   'label': t_targets.cpu().numpy()[i]}
+                                            errors = errors.append(err, ignore_index=True)
+                                n_test_correct += (torch.argmax(t_outputs, -1) == t_targets).sum().item()
+                                n_test_total += len(t_outputs)
+                                n_test_loss += len(t_inputs) * criterion(t_outputs, t_targets)
+                            test_acc = n_test_correct / n_test_total
+                            test_loss = n_test_loss
+                            if test_acc > max_test_acc:
+                                max_test_acc = test_acc
+                                torch.save({
+                                    'epoch': epoch,
+                                    'state_dict': self.model.state_dict(),
+                                    'best_test_acc': max_test_acc,
+                                }, './best/' + opt.model_name + '_best.pkl')
+                                if max_test_acc > 0.75:
+                                    errors.to_csv(opt.model_name + '_error.csv', encoding='utf8')
+                            print(
+                                'loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}, test_loss: {:.4f}'.format(loss.item(),
+                                                                                                        train_acc,
+                                                                                                        test_acc,
+                                                                                                        test_loss))
 
-                            n_test_correct += (torch.argmax(t_outputs, -1) == t_targets).sum().item()
-                            n_test_total += len(t_outputs)
-                        test_acc = n_test_correct / n_test_total
-                        if test_acc > max_test_acc:
-                            max_test_acc = test_acc
-
-                        print('loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}'.format(loss.item(), train_acc, test_acc))
-
-                        # log
-                        # self.writer.add_scalar('loss', loss, global_step)
-                        # self.writer.add_scalar('acc', train_acc, global_step)
-                        # self.writer.add_scalar('test_acc', test_acc, global_step)
-
-        # self.writer.close()
+                            # log
+                            self.writer.add_scalars('loss', {'train_loss': loss, 'test_loss': test_loss}, global_step)
+                            self.writer.add_scalars('acc', {'train_acc': train_acc, 'test_acc': test_acc}, global_step)
+        except KeyboardInterrupt:
+            print('training has stopped early')
+        self.writer.close()
 
         print('max_test_acc: {0}'.format(max_test_acc))
         return max_test_acc
@@ -139,7 +168,8 @@ if __name__ == '__main__':
         'ian': IAN,
         'memnet': MemNet,
         'ram': RAM,
-        'cabasc': Cabasc
+        'cabasc': Cabasc,
+        'lrg': LRG
     }
     input_colses = {
         'lstm': ['text_raw_indices'],
@@ -151,6 +181,8 @@ if __name__ == '__main__':
         'ram': ['text_raw_indices', 'entity_indices'],
         'cabasc': ['text_raw_indices', 'entity_indices', 'text_left_with_entity_indices',
                    'text_right_with_entity_indices'],
+        'lrg': ['text_raw_indices', 'entity_indices', 'text_left_with_entity_indices',
+                'text_right_with_entity_indices'],
     }
     initializers = {
         'xavier_uniform_': torch.nn.init.xavier_uniform_,

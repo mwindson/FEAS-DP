@@ -68,17 +68,19 @@ class TextDataSet(data.Dataset):
             for index, entity in enumerate(entity_list):
                 text_raw_indices = self.text_to_sequence(text_raw, vector_level)
                 entity = entity_list[index]
-                text_left, _, text_right = [s for s in text_raw.partition(entity)]
+                text_left, _, text_right = [s for s in text_raw.partition(str(entity))]
                 text_left_indices = self.text_to_sequence(text_left, vector_level)
-                text_right_indices = self.text_to_sequence(text_right, vector_level)
+                text_right_indices = self.text_to_sequence(text_right, vector_level, reverse=True)
                 text_raw_without_entity_indices = text_left_indices + text_right_indices
                 entity_indices = self.w2i[entity] if entity in self.w2i else len(self.w2i) + 1
                 text_left_with_entity_indices = text_left_indices + [entity_indices]
-                text_right_with_entity_indices = [entity_indices] + text_right_indices
+                text_right_with_entity_indices = text_right_indices + [entity_indices]
                 label = int(row[1]['score'][index]) + 1
                 pad = lambda seq: self.pad_sequence(seq, self.max_seq_len, dtype='int64', padding=pad_and_trunc,
                                                     truncating=pad_and_trunc)
                 data = {
+                    'text_raw': text_raw,
+                    'entity': entity,
                     'text_raw_indices': torch.tensor(pad(text_raw_indices), dtype=torch.long),
                     'text_left_indices': torch.tensor(pad(text_left_indices), dtype=torch.long),
                     'text_left_with_entity_indices': torch.tensor(pad(text_left_with_entity_indices), dtype=torch.long),

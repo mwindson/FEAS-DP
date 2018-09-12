@@ -6,3 +6,4 @@ from .ram import RAM
 from .cnn import CNN
 from .cabasc import Cabasc
 from .memnet import MemNet
+from .lrg import LRG
