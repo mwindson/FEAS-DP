@@ -120,7 +120,7 @@ class Instructor:
                                     'state_dict': self.model.state_dict(),
                                     'best_test_acc': max_test_acc,
                                 }, './best/' + opt.model_name + '_best.pkl')
-                                if max_test_acc > 0.75:
+                                if max_test_acc > 0.80:
                                     errors.to_csv(opt.model_name + '_error.csv', encoding='utf8')
                             print(
                                 'loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}, test_loss: {:.4f}'.format(loss.item(),
