@@ -13,7 +13,7 @@ class Cabasc(nn.Module):
         self.opt = opt
         self.embed = nn.Embedding.from_pretrained(torch.tensor(embedding_matrix, dtype=torch.float))
         self.squeeze_embedding = SqueezeEmbedding(batch_first=True)
-        self.attention = Attention(opt.embed_dim, score_function='mlp')  # content attention
+        self.attention = Attention(opt.embed_dim, score_function='mlp', dropout=opt.dropout)  # content attention
         self.m_linear = nn.Linear(opt.embed_dim, opt.embed_dim, bias=False)
         self.mlp = nn.Linear(opt.embed_dim, opt.embed_dim)  # W4
         self.dense = nn.Linear(opt.embed_dim, opt.polarities_dim)  # W5
