@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from tensorboardX import SummaryWriter
+#from tensorboardX import SummaryWriter
 import argparse
 import os
 import pandas as pd
@@ -23,14 +23,14 @@ class Instructor:
             'char_bigram': '/data/word2vec/sgns.financial.bigram-char'
         }
         embed = WordEmbedding(os.path.dirname(__file__) + w2v_path[opt.vector_level], initializer='avg')
-        train_set = TextDataSet(os.path.dirname(__file__) + '/data/single_test.csv', embed,
+        train_set = TextDataSet(os.path.dirname(__file__) + '/data/temp.csv', embed,
                                 max_seq_len=opt.max_seq_len, vector_level=opt.vector_level, train=True)
-        test_set = TextDataSet(os.path.dirname(__file__) + '/data/single_test.csv', embed,
+        test_set = TextDataSet(os.path.dirname(__file__) + '/data/temp.csv', embed,
                                max_seq_len=opt.max_seq_len, vector_level=opt.vector_level, test=True)
         self.train_data_loader = DataLoader(dataset=train_set, batch_size=opt.batch_size, shuffle=True)
         self.test_data_loader = DataLoader(dataset=test_set, batch_size=opt.batch_size,
                                            shuffle=True)
-        self.writer = SummaryWriter(log_dir=opt.logdir)
+        #self.writer = SummaryWriter(log_dir=opt.logdir)
 
         self.model = opt.model_class(embed.m, opt).to(opt.device)
         self.reset_parameters()
@@ -58,7 +58,7 @@ class Instructor:
         # Loss and Optimizer
         criterion = nn.CrossEntropyLoss()
         params = filter(lambda p: p.requires_grad, self.model.parameters())
-        optimizer = self.opt.optimizer(params, lr=self.opt.learning_rate, weight_decay=1e-4)
+        optimizer = self.opt.optimizer(self.model.parameters(), lr=self.opt.learning_rate, weight_decay=1e-4)
         print('-----------start train---------- ')
         max_test_acc = 0
         global_step = 0
@@ -113,15 +113,15 @@ class Instructor:
                                 n_test_loss += len(t_inputs) * criterion(t_outputs, t_targets)
                             test_acc = n_test_correct / n_test_total
                             test_loss = n_test_loss
-                            if test_acc > max_test_acc:
+                            if test_acc > 0.79:
                                 max_test_acc = test_acc
                                 torch.save({
                                     'epoch': epoch,
                                     'state_dict': self.model.state_dict(),
                                     'best_test_acc': max_test_acc,
                                 }, './best/' + opt.model_name + '_best.pkl')
-                                if max_test_acc > 0.80:
-                                    errors.to_csv(opt.model_name + '_error.csv', encoding='utf8')
+                            if max_test_acc > 0.80:
+                                    errors.to_csv('./model_error/'+opt.model_name + '_error.csv', encoding='utf8')
                             print(
                                 'loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}, test_loss: {:.4f}'.format(loss.item(),
                                                                                                         train_acc,

@@ -55,12 +55,12 @@ class TextDataSet(data.Dataset):
     def tokenize(self, path, vector_level='word'):
         f = pd.read_csv(path, encoding='utf8', index_col=0)
         all_data = []
-        text_raw = []
-        labels = []
-        entities = []
         pad_and_trunc = 'post'
         f.entity = f.entity.apply(lambda s: list(ast.literal_eval(s)))
-        f.score = f.score.apply(lambda s: list(ast.literal_eval(s)))
+        try:
+            f.score = f.score.apply(lambda s: list(ast.literal_eval(s)))
+        except:
+            f.score = 0
         for row in f.iterrows():
             text_raw = row[1]['sentence'].lstrip().rstrip()
             entity_list = row[1]['entity']
@@ -75,7 +75,10 @@ class TextDataSet(data.Dataset):
                 entity_indices = self.w2i[entity] if entity in self.w2i else len(self.w2i) + 1
                 text_left_with_entity_indices = text_left_indices + [entity_indices]
                 text_right_with_entity_indices = text_right_indices + [entity_indices]
-                label = int(row[1]['score'][index]) + 1
+                try:
+                    label = int(row[1]['score'][index]) + 1
+                except:
+                    label = 0
                 pad = lambda seq: self.pad_sequence(seq, self.max_seq_len, dtype='int64', padding=pad_and_trunc,
                                                     truncating=pad_and_trunc)
                 data = {
