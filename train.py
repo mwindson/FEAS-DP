@@ -6,8 +6,11 @@ import argparse
 import os
 import pandas as pd
 from utils import TextDataSet, WordEmbedding
-
-from models import LSTM, AT_LSTM, ATAE_LSTM, RAM, IAN, CNN, Cabasc, MemNet, LRG
+import matplotlib.pyplot as plt
+from models import LSTM, AT_LSTM, ATAE_LSTM, RAM, IAN, CNN, Cabasc, MemNet, LRG, C_LSTM
+from models.lstm_cnn import LSTM_CNN
+from models.gcae import CNN_Gate_Aspect_Text
+from models.tmp import TMP
 
 
 class Instructor:
@@ -19,20 +22,25 @@ class Instructor:
         w2v_path = {
             'word': '/data/word2vec/sgns.financial.word',
             'word_bigram': '/data/word2vec/sgns.financial.bigram',
-            'char': '/data/word2vec/sgns.financial.char',
-            'char_bigram': '/data/word2vec/sgns.financial.bigram-char'
+            'word_char': '/data/word2vec/sgns.financial.char',
+            'word_char_bigram': '/data/word2vec/sgns.financial.bigram-char',
+            'char': '/data/word2vec/sgns.char'
         }
-        embed = WordEmbedding(os.path.dirname(__file__) + w2v_path[opt.vector_level], initializer='avg')
-        train_set = TextDataSet(os.path.dirname(__file__) + '/data/single_test.csv', embed,
+        embed = WordEmbedding(os.path.dirname(__file__) + w2v_path[opt.vector_level])
+        c2v_path = '/data/word2vec/sgns.char'
+        charEmbed = WordEmbedding(os.path.dirname(__file__) + c2v_path)
+        train_set = TextDataSet(os.path.dirname(__file__) + '/data/test_data.csv', embed, charEmbed,
                                 max_seq_len=opt.max_seq_len, vector_level=opt.vector_level, train=True)
-        test_set = TextDataSet(os.path.dirname(__file__) + '/data/single_test.csv', embed,
+        test_set = TextDataSet(os.path.dirname(__file__) + '/data/test_data.csv', embed, charEmbed,
                                max_seq_len=opt.max_seq_len, vector_level=opt.vector_level, test=True)
         self.train_data_loader = DataLoader(dataset=train_set, batch_size=opt.batch_size, shuffle=True)
         self.test_data_loader = DataLoader(dataset=test_set, batch_size=opt.batch_size,
                                            shuffle=True)
         self.writer = SummaryWriter(log_dir=opt.logdir)
-
-        self.model = opt.model_class(embed.m, opt).to(opt.device)
+        if opt.model_name in ['tmp', 'lstm_cnn']:
+            self.model = opt.model_class(embed.m, charEmbed.m, opt).to(opt.device)
+        else:
+            self.model = opt.model_class(embed.m, opt).to(opt.device)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -48,7 +56,7 @@ class Instructor:
         print('n_trainable_params: {0}, n_nontrainable_params: {1}'.format(n_trainable_params, n_nontrainable_params))
 
     def adjust_learning_rate(self, optimizer, epoch):
-        """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
+        """Sets the learning rate to the initial LR decayed by 4 every 10 epochs"""
         lr = self.opt.learning_rate * (0.25 ** (int(epoch / 10)))
         print("lr>>>>>> ", lr)
         for param_group in optimizer.param_groups:
@@ -112,7 +120,7 @@ class Instructor:
                                 n_test_total += len(t_outputs)
                                 n_test_loss += len(t_inputs) * criterion(t_outputs, t_targets)
                             test_acc = n_test_correct / n_test_total
-                            test_loss = n_test_loss
+                            test_loss = n_test_loss / n_test_total
                             if test_acc > max_test_acc:
                                 max_test_acc = test_acc
                                 torch.save({
@@ -131,7 +139,7 @@ class Instructor:
                             # log
                             self.writer.add_scalars('loss', {'train_loss': loss, 'test_loss': test_loss}, global_step)
                             self.writer.add_scalars('acc', {'train_acc': train_acc, 'test_acc': test_acc}, global_step)
-        except KeyboardInterrupt:
+        except:
             print('training has stopped early')
         self.writer.close()
 
@@ -142,12 +150,12 @@ class Instructor:
 if __name__ == '__main__':
     # Hyper Parameters
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_name', default='ram', type=str)
+    parser.add_argument('--model_name', default='lstm_cnn', type=str)
     parser.add_argument('--vector_level', default='word', type=str)
     parser.add_argument('--optimizer', default='adam', type=str)
     parser.add_argument('--initializer', default='xavier_uniform_', type=str)
     parser.add_argument('--learning_rate', default=0.001, type=float)
-    parser.add_argument('--dropout', default=0, type=float)
+    parser.add_argument('--dropout', default=0.5, type=float)
     parser.add_argument('--num_epoch', default=30, type=int)
     parser.add_argument('--batch_size', default=128, type=int)
     parser.add_argument('--log_step', default=5, type=int)
@@ -169,7 +177,11 @@ if __name__ == '__main__':
         'memnet': MemNet,
         'ram': RAM,
         'cabasc': Cabasc,
-        'lrg': LRG
+        'lrg': LRG,
+        'c_lstm': C_LSTM,
+        'lstm_cnn': LSTM_CNN,
+        'gcae': CNN_Gate_Aspect_Text,
+        'tmp': TMP
     }
     input_colses = {
         'lstm': ['text_raw_indices'],
@@ -183,6 +195,10 @@ if __name__ == '__main__':
                    'text_right_with_entity_indices'],
         'lrg': ['text_raw_indices', 'entity_indices', 'text_left_with_entity_indices',
                 'text_right_with_entity_indices'],
+        'c_lstm': ['text_raw_indices', 'entity_indices'],
+        'lstm_cnn': ['text_raw_indices', 'entity_indices', 'text_word_char_indices', 'entity_char_indices'],
+        'gcae': ['text_raw_indices', 'entity_indices'],
+        'tmp': ['text_raw_indices', 'entity_indices', 'text_word_char_indices', 'entity_char_indices']
     }
     initializers = {
         'xavier_uniform_': torch.nn.init.xavier_uniform_,

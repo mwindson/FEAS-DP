@@ -4,7 +4,7 @@ import os
 
 class WordEmbedding():
     def __init__(self, file_path, initializer="random"):
-        mat, w2i, i2w = self.load_word2vec(file_path, initializer="random")
+        mat, w2i, i2w = self.load_word2vec(file_path, initializer=initializer)
         self.m = mat
         self.word2id = w2i
         self.id2word = i2w
