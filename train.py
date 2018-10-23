@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from tensorboardX import SummaryWriter
+#from tensorboardX import SummaryWriter
 import argparse
 import os
 import pandas as pd
@@ -128,8 +128,8 @@ class Instructor:
                                     'state_dict': self.model.state_dict(),
                                     'best_test_acc': max_test_acc,
                                 }, './best/' + opt.model_name + '_best.pkl')
-                                if max_test_acc > 0.80:
-                                    errors.to_csv(opt.model_name + '_error.csv', encoding='utf8')
+                            if max_test_acc > 0.80:
+                                    errors.to_csv('./model_error/'+opt.model_name + '_error.csv', encoding='utf8')
                             print(
                                 'loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}, test_loss: {:.4f}'.format(loss.item(),
                                                                                                         train_acc,
@@ -139,7 +139,7 @@ class Instructor:
                             # log
                             self.writer.add_scalars('loss', {'train_loss': loss, 'test_loss': test_loss}, global_step)
                             self.writer.add_scalars('acc', {'train_acc': train_acc, 'test_acc': test_acc}, global_step)
-        except:
+        except KeyboardInterrupt:
             print('training has stopped early')
         self.writer.close()
 
